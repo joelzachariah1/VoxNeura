@@ -1,5 +1,7 @@
 # VoxNeura
 
+Adaptive EEG-Based Communication Interface
+
 VoxNeura is an adaptive EEG communication interface. When signal reliability is judged to be high, the board offers more phrases. When it is moderate, the board is shorter. When it is low, the board keeps YES, NO, HELP, and RETRY.
 
 EEG measures voltage at the scalp. It does not contain words. This application does not read thoughts, and it is not a clinical device.
