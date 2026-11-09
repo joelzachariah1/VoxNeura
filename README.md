@@ -2,7 +2,7 @@
 
 Adaptive EEG-Based Communication Interface
 
-VoxNeura is an adaptive EEG communication interface. When signal reliability is judged to be high, the board offers more phrases. When it is moderate, the board is shorter. When it is low, the board keeps YES, NO, HELP, and RETRY.
+VoxNeura is a proposed adaptive EEG communication interface. In that proposal, a validated measure of signal quality would set the number of phrases. This website does not make that measurement. It illustrates the proposal with variability-based demonstration states from rule `variability-tertiles-v1`.
 
 EEG measures voltage at the scalp. It does not contain words. This application does not read thoughts, and it is not a clinical device.
 
@@ -48,9 +48,9 @@ The two time series use different scales, so their amplitudes should not be comp
 
 ## Reliability rule
 
-The CSV has no reliability label. The demonstration rule `variability-tertiles-v1` orders the rows by variability, lowest first. The first third is the high-reliability state, the middle third is medium, and the remaining rows are low. For 64 rows that is 21, 21, and 22. Lower variability is mapped to the larger choice set.
+The CSV has no reliability label, artifact label, or signal-quality label. The demonstration rule `variability-tertiles-v1` orders the rows by variability, lowest first. The first third is the high variability-based demonstration state, the middle third is medium, and the remaining rows are low. For 64 rows that is 21, 21, and 22. Lower variability is mapped to the larger choice set.
 
-This is an equal-count split, not a validated index. A large variability value can be artifact or a large neural signal. The file does not say which. The rule is documented on the Reliability page, and the same function drives the interface when a row is matched.
+This mapping is a demonstration assumption. It has not been validated as EEG reliability on the supplied data. A high-variability row is not identified as noise, and a low-variability row is not identified as a reliable signal. The same function drives the interface when a row is matched. Manual High, Medium, and Low controls are also demonstration controls.
 
 Classifier confidence is not in the file. The slider is a demonstration. Confirmation is required when its value is below 70. At 70 or above, a choice is sent immediately.
 
@@ -68,10 +68,12 @@ Keys 1 through 9 select the first nine visible choices. Enter sends a waiting ch
 
 ## Experiments
 
-The experiments page is a demonstration task, not an EEG study.
+The experiments page records browser selections. It is not an EEG study.
+
+Each trial asks for one of YES, NO, HELP, or RETRY. Those four essential phrases stay available. The scenario and policy change how many additional phrases are visible. A recorded selection stores the number of visible choices and the demonstration state at that moment. Timeouts and stopped trials store neither, because no selection occurred.
 
 - The target is one of YES, NO, HELP, or RETRY, each with equal chance. The draw is not seeded.
-- Held high keeps reliability high. Both policies show 16 choices, so this scenario is a control.
+- Held high keeps the demonstration state high. Both policies show 16 choices, so this scenario is a control.
 - Step down is high until 5 seconds, medium until 10 seconds, then low.
 - Held low stays low.
 - Fixed always shows 16 choices. Adaptive shows 16, 8, or 4.
@@ -114,8 +116,9 @@ Open the address printed by `npm run dev`, usually `http://localhost:5173`. `npm
 - A selected word is not evidence that EEG classified an intention.
 - The 64 rows are not identified as 64 participants. Neighboring rows often move together, which is visible on the charts.
 - The screenshots are not the recording.
-- The variability tertiles can split a narrow range into three labels.
-- The confidence slider is not a model output.
+- The variability tertiles can split a narrow range into three labels. That split is not a validated reliability measurement.
+- The confidence slider is not connected to a trained classifier.
+- Sampling rate, recording duration, subject information, feature extraction, units, and dataset source were not in the supplied files and are not guessed.
 - Speech depends on the browser.
 
 Questions that the supplied files do not answer, and that this application does not guess: who was recorded, what task they performed, how the five columns were computed, whether the images match the CSV, and whether a classifier or a participant comparison was ever run.

@@ -9,15 +9,43 @@ import { formatR, formatSci } from '../lib/format.ts'
 import { RULE_ID, assignByVariability, binCounts, binEdges } from '../lib/reliability.ts'
 import { columnStat, mean } from '../lib/stats.ts'
 
+const MISSING_METHODS = [
+  'Sampling rate.',
+  'Recording duration, and whether each row is a window, a trial, or a person.',
+  'Subject information: who was recorded, how many people, and any inclusion criteria.',
+  'Feature extraction: how theta, alpha, beta, variability, and mean amplitude were computed, including band edges, window, and reference.',
+  'Units for all five columns. The CSV header does not state them.',
+  'Dataset source: where the recording and features.csv came from.',
+]
+
 const UNANSWERED = [
-  'Who was recorded, and how many people?',
   'What task were they doing?',
-  'What were the sampling rate, reference, filters, and montage?',
-  'How were theta, alpha, beta, variability, and mean amplitude computed, and in what units?',
+  'What were the reference, filters, and montage?',
   'Do the rows line up with the three screenshots?',
   'Was a classifier trained? If so, what were its inputs, labels, and outputs?',
   'Were the fixed and adaptive boards compared with participants, and what was measured?',
 ]
+
+const REFERENCES = [
+  {
+    topic: 'EEG preprocessing',
+    cite: 'Bigdely-Shamlo N, Mullen T, Kothe C, Su K-M, Robbins KA. The PREP pipeline: standardized preprocessing for large-scale EEG analysis. Frontiers in Neuroinformatics. 2015;9:16. doi:10.3389/fninf.2015.00016',
+    scope:
+      'Describes an early-stage EEG pipeline for line noise, a robust average reference, and bad-channel detection. It was not applied to features.csv, and it does not define the variability tertiles used here.',
+  },
+  {
+    topic: 'EEG signal quality',
+    cite: 'Urigüen JA, García-Zapirain B. EEG artifact removal, state-of-the-art and guidelines. Journal of Neural Engineering. 2015;12:031001. doi:10.1088/1741-2560/12/3/031001',
+    scope:
+      'Reviews methods for ocular, muscular, and cardiac artifact removal. It does not label the rows in features.csv, and it does not treat one variability number as a validated reliability score.',
+  },
+  {
+    topic: 'Communication interfaces',
+    cite: 'Wolpaw JR, Birbaumer N, McFarland DJ, Pfurtscheller G, Vaughan TM. Brain-computer interfaces for communication and control. Clinical Neurophysiology. 2002. doi:10.1016/S1388-2457(02)00057-3',
+    scope:
+      'Reviews brain-computer interfaces that translate brain signals into communication or control outputs. It does not evaluate this website, this CSV, or a rule that changes the number of phrases from a variability tertile.',
+  },
+] as const
 
 export function ResearchPage() {
   usePageTitle('Research')
@@ -49,6 +77,19 @@ export function ResearchPage() {
 
       <FeaturesGate>{({ rows }) => <Findings rows={rows} />}</FeaturesGate>
 
+      <section className="block" id="missing-methods">
+        <h2>Missing methodological information</h2>
+        <p>
+          The items below are absent from the supplied files. They are listed so the gap is
+          explicit. No value is estimated for any of them.
+        </p>
+        <ul>
+          {MISSING_METHODS.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
+
       <section className="block" id="not-reported">
         <h2>Not reported in the supplied files</h2>
         <ul>
@@ -65,8 +106,10 @@ export function ResearchPage() {
         </h2>
         <p>
           The interface uses rule {RULE_ID}, documented on the <Link to="/reliability">reliability page</Link>.
+          The groups it produces are variability-based demonstration states. They illustrate a
+          proposed adaptive mechanism. They are not validated EEG reliability measurements.
           The experiment log is created when someone uses the <Link to="/experiments">experiments page</Link>.
-          Both are demonstrations. Neither is a reconstruction of a completed study.
+          Those trials are browser selections among four essential phrases. They are not an EEG study.
         </p>
       </section>
 
@@ -78,12 +121,33 @@ export function ResearchPage() {
           <li>The feature rows are not identified as independent participants.</li>
           <li>The screenshots are pictures of a viewer. They are not the recording.</li>
           <li>Figure 1 and Figure 2 use different microvolt scales, so their amplitudes should not be compared by eye.</li>
-          <li>The variability tertiles are equal-count bins. They can split a narrow range into three labels.</li>
-          <li>High variability is not labeled as artifact anywhere in the file.</li>
-          <li>The confidence slider is not the output of a model.</li>
-          <li>Speech depends on the browser. HELP does not contact anyone.</li>
-          <li>A literature review was not part of the supplied materials, so none is invented here.</li>
+          <li>The variability tertiles are equal-count bins. They can split a narrow range into three labels. That split has not been validated as EEG reliability.</li>
+          <li>High variability is not labeled as artifact anywhere in the file, and low variability is not labeled as a reliable signal.</li>
+          <li>The confidence slider is not the output of a trained classifier.</li>
+          <li>Speech depends on the browser. HELP does not contact anyone. No patient communication was recorded.</li>
+          <li>The references below are background reading. They were not in the supplied project files, and they are not evidence that this demonstration works.</li>
         </ul>
+      </section>
+
+      <section className="block" id="references">
+        <h2>References</h2>
+        <p>
+          No bibliography was supplied with the project. The three records below were checked
+          against their publishers. Each note states what the source covers. None of them tested
+          variability-tertiles-v1, and none of them reports a result from this dataset.
+        </p>
+        {REFERENCES.map((item) => (
+          <section key={item.cite}>
+            <h3>{item.topic}</h3>
+            <p>{item.cite}</p>
+            <p>{item.scope}</p>
+          </section>
+        ))}
+        <p>
+          No verified source in this revision evaluates an interface that changes the number of
+          communication phrases from a variability tertile. That claim is not attached to the
+          papers above.
+        </p>
       </section>
     </>
   )
@@ -137,8 +201,9 @@ function Findings({ rows }: { rows: FeatureRow[] }) {
           {bandOrder.map((item) => `${item.key} (${formatSci(item.value)})`).join(', ')}.
         </li>
         <li>
-          The demonstration split of these rows is {counts.high} high, {counts.medium} medium, and{' '}
-          {counts.low} low.
+          Rule {RULE_ID} places these rows into {counts.high} high, {counts.medium} medium, and{' '}
+          {counts.low} low variability-based demonstration states. Those counts are a reproducible
+          sort, not a validated reliability classification.
           {edges.highMax !== null && edges.mediumMax !== null
             ? ` The high-group maximum variability is ${formatSci(edges.highMax)}, and the medium-group maximum is ${formatSci(edges.mediumMax)}.`
             : ''}

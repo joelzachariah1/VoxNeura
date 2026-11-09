@@ -5,7 +5,7 @@ export const RELIABILITY_LEVELS: readonly Reliability[] = ['high', 'medium', 'lo
 export const RULE_ID = 'variability-tertiles-v1'
 
 export const RULE_SUMMARY =
-  'Rows are ordered by variability, lowest first. The first third is the high-reliability demonstration state, the middle third is medium, and the remaining rows are low. 64 is not divisible by 3, so the low state receives the extra row. Lower variability is mapped to the larger choice set. The file has no artifact labels, so a large variability value is not identified as noise.'
+  'Rows are ordered by variability, lowest first. The first third is the high variability-based demonstration state, the middle third is medium, and the remaining rows are low. When the row count is not divisible by 3, the low state receives the extra rows. Lower variability is mapped to the larger choice set. This mapping is a demonstration assumption. It illustrates a proposed adaptive mechanism. It is not a validated measurement of EEG reliability. The file has no artifact labels, signal-quality labels, or reliability scores. A high-variability row is not identified as noise, and a low-variability row is not identified as a reliable signal.'
 
 export type VariabilityRow = { index: number; variability: number }
 

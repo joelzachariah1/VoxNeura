@@ -87,7 +87,8 @@ export function FiguresPage() {
           The readable names, Fc5 through Fc6 and the neighboring sites, are frontal and central
           positions in the 10-10 system. The full montage is not in the file. Figure 1 and Figure
           2 are separate images. The materials do not say they are the same recording, the same
-          person, or the source of features.csv.
+          person, or the source of features.csv. The visual difference between Figure 1 and Figure
+          2 is not a reliability label, and it is not the input to the variability tertile rule.
         </p>
       </section>
 

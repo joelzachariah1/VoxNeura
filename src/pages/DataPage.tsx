@@ -56,7 +56,7 @@ const COMPUTED_HEADERS: { key: SortKey; label: string }[] = [
   { key: 'alphaShare', label: 'Alpha share' },
   { key: 'betaShare', label: 'Beta share' },
   { key: 'rank', label: 'Variability rank' },
-  { key: 'state', label: 'State' },
+  { key: 'state', label: 'Demonstration state' },
 ]
 
 export function DataPage() {
@@ -346,8 +346,9 @@ function Explorer({ rows, raw }: { rows: FeatureRow[]; raw: string }) {
         <h2>All rows</h2>
         <p className="note">
           Row numbers follow the order in the file. They are not identifiers supplied with the
-          data. State is the demonstration tertile. Sorting that column ascending puts high, then
-          medium, then low.
+          data. Demonstration state is the variability tertile from rule variability-tertiles-v1.
+          It is not a validated reliability label. Sorting that column ascending puts high, then
+          medium, then low. A high-variability row is not marked as noise.
         </p>
         <form className="form-row" onSubmit={goToRow}>
           <label htmlFor="jump">
@@ -455,7 +456,7 @@ function RowDetail({ row, total }: { row: ViewRow; total: number }) {
           {row.rank} of {total}
         </dd>
         <dt>Demonstration state</dt>
-        <dd>{row.state}</dd>
+        <dd>{row.state} variability-based demonstration state</dd>
       </dl>
       <p>
         <Link to={`/interface?row=${row.index}`}>Match row {row.index} on the interface</Link>

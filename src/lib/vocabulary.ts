@@ -15,3 +15,7 @@ export function reliabilityLabel(state: Reliability): string {
   if (state === 'medium') return 'Medium'
   return 'Low'
 }
+
+export function demonstrationStatePhrase(state: Reliability): string {
+  return `${reliabilityLabel(state)} variability-based demonstration state`
+}

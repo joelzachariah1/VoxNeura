@@ -85,7 +85,7 @@ export function transcriptToCsv(log: LogEntry[]): string {
     [
       'at',
       'token',
-      'reliability',
+      'demonstration_state',
       'choice_count',
       'confidence',
       'needed_confirmation',

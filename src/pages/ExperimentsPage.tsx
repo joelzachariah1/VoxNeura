@@ -20,7 +20,7 @@ import {
 import type { Policy, ScenarioId } from '../lib/protocol.ts'
 import { loadTrials, saveTrials, summaryRows, trialsToCsv } from '../lib/trials.ts'
 import type { EndedBy, TrialRecord } from '../lib/trials.ts'
-import { VOCAB, reliabilityLabel } from '../lib/vocabulary.ts'
+import { VOCAB, demonstrationStatePhrase, reliabilityLabel } from '../lib/vocabulary.ts'
 
 function monotonicNow(): number {
   return performance.now()
@@ -78,8 +78,9 @@ export function ExperimentsPage() {
     if (finishedId.current === trial.id) return
     finishedId.current = trial.id
     const state = stateAt(trial.scenario, elapsedMs)
-    const choiceCount = choicesFor(trial.policy, state).length
-    const rtMs = endedBy === 'selection' ? Math.round(elapsedMs) : null
+    const selected = endedBy === 'selection'
+    const choiceCount = selected ? choicesFor(trial.policy, state).length : null
+    const rtMs = selected ? Math.round(elapsedMs) : null
     const correct = selection === null ? null : selection === trial.target
     const stored = trial.record
     setOutcome(outcomeText(trial, endedBy, selection, elapsedMs, stored))
@@ -99,7 +100,7 @@ export function ExperimentsPage() {
         correct,
         rtMs,
         choiceCount,
-        reliability: state,
+        reliability: selected ? state : null,
         endedBy,
       } satisfies TrialRecord,
     ]
@@ -206,7 +207,10 @@ export function ExperimentsPage() {
         <p>
           <Mark kind="demonstration" /> This page records selections made in this browser. It does
           not record EEG, and it is not a result from a participant study. Each trial asks for one
-          of YES, NO, HELP, or RETRY, because those four words exist in every reliability state.
+          of the four essential phrases, YES, NO, HELP, or RETRY. Those four stay available in
+          every demonstration state. The scenario and policy change how many additional phrases
+          are visible. The recorded state is the variability-based demonstration state at the
+          moment of selection. It is not an EEG reliability measurement.
         </p>
       </PageHeader>
 
@@ -214,10 +218,12 @@ export function ExperimentsPage() {
         <h2>Protocol</h2>
         <p>
           A trial ends at the first selection, at 30 seconds with no selection, or when Stop trial
-          is pressed. Held high is a control: both policies show the same {VOCAB.high.length}{' '}
-          choices, so a time difference there is not explained by the size of the board. Step down
-          changes state at {STEP_TO_MEDIUM_MS / 1000} seconds and again at {STEP_TO_LOW_MS / 1000}{' '}
-          seconds. Held low stays low.
+          is pressed. The target is always one of the four essential phrases. Other phrases, when
+          they are on screen, are additional visible choices. Held high is a control: both policies
+          show the same {VOCAB.high.length} choices, so a time difference there is not explained by
+          the size of the board. Step down changes the demonstration state at {STEP_TO_MEDIUM_MS / 1000}{' '}
+          seconds and again at {STEP_TO_LOW_MS / 1000} seconds. Held low stays low. None of these
+          clocks is computed from EEG.
         </p>
         <p>
           Fixed always shows {VOCAB.high.length} choices. Adaptive shows {VOCAB.high.length} at
@@ -226,7 +232,10 @@ export function ExperimentsPage() {
         </p>
         <div className="table-wrap">
           <table className="prose-table">
-            <caption>Reliability state by scenario and elapsed time. Choice counts follow the policy.</caption>
+            <caption>
+              Demonstration state by scenario and elapsed time. This clock is not an EEG
+              measurement. Choice counts follow the policy.
+            </caption>
             <thead>
               <tr>
                 <th scope="col">Elapsed</th>
@@ -352,14 +361,14 @@ export function ExperimentsPage() {
               Select {running.target}
             </p>
             <p>
-              {formatMs(clock)} elapsed. Reliability {reliabilityLabel(reliability)}. {choices.length}{' '}
+              {formatMs(clock)} elapsed. {demonstrationStatePhrase(reliability)}. {choices.length}{' '}
               choices. {policyName(running.policy)} policy. {scenarioName(running.scenario)}.
               {running.record ? ' Recording.' : ' Practice, not recorded.'}
             </p>
           </>
         ) : (
           <p className="note">
-            Preview at 0 seconds. {reliabilityLabel(reliability)}, {choices.length} choices. The
+            Preview at 0 seconds. {demonstrationStatePhrase(reliability)}, {choices.length} choices. The
             buttons stay inactive until the trial starts.
           </p>
         )}
@@ -409,7 +418,11 @@ export function ExperimentsPage() {
         ) : null}
         <div className="table-wrap">
           <table className="numeric">
-            <caption>Summary of trials stored in this browser.</caption>
+            <caption>
+              Browser-demonstration summary. Groups are by policy, by scenario and policy, and by
+              the demonstration state recorded at selection. Timeouts and stopped trials have no
+              selection state, so they are absent from the state groups.
+            </caption>
             <thead>
               <tr>
                 <th scope="col">Group</th>
@@ -452,8 +465,8 @@ export function ExperimentsPage() {
                 <th scope="col">Selection</th>
                 <th scope="col">Correct</th>
                 <th scope="col">Time</th>
-                <th scope="col">Choices</th>
-                <th scope="col">State</th>
+                <th scope="col">Visible choices at selection</th>
+                <th scope="col">State at selection</th>
                 <th scope="col">Ended</th>
               </tr>
             </thead>
@@ -518,5 +531,5 @@ function comparisonSentence(
   if (parts.length === 0) {
     return 'No selections have been stored yet. Medians appear after a recorded trial ends with a choice.'
   }
-  return `These numbers describe trials stored in this browser. ${parts.join(' ')} They are not a result from a participant study.`
+  return `These numbers describe browser selections stored on this computer. Each selection is one of four essential phrases. ${parts.join(' ')} They are not an EEG result and not a participant study.`
 }

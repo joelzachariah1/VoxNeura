@@ -66,7 +66,7 @@ export function InterfacePage() {
     setTrackedChoices(choices)
     if (pending && !choices.includes(pending)) {
       setPending(null)
-      setNotice(`${pending} left the board when reliability changed. It was not sent.`)
+      setNotice(`${pending} left the board when the demonstration state changed. It was not sent.`)
     }
   }
 
@@ -170,7 +170,9 @@ export function InterfacePage() {
     setFollowUrl(false)
     setManualReliability(next)
     setMatchedRow(null)
-    setNotice(`Reliability set to ${next}. ${VOCAB[next].length} choices.`)
+    setNotice(
+      `Demonstration control set to ${next}. ${VOCAB[next].length} choices. This is not an EEG measurement.`,
+    )
   }
 
   function matchRow() {
@@ -180,7 +182,7 @@ export function InterfacePage() {
     setManualReliability(assignment.state)
     setMatchedRow(rowPick)
     setNotice(
-      `Matched row ${rowPick}. Reliability is ${assignment.state}. ${VOCAB[assignment.state].length} choices.`,
+      `Matched row ${rowPick} with rule ${RULE_ID}. Variability-based demonstration state: ${assignment.state}. ${VOCAB[assignment.state].length} choices. This is not a validated reliability score.`,
     )
   }
 
@@ -191,9 +193,10 @@ export function InterfacePage() {
     <>
       <PageHeader eyebrow="Interface" title="Adaptive communication board">
         <p>
-          <Mark kind="demonstration" /> High, medium, and low change the choices immediately.
-          Confidence does not. HELP records the word and can speak it. It does not contact
-          emergency services.
+          <Mark kind="demonstration" /> High, Medium, and Low are demonstration controls. They
+          change the choices immediately. They do not read a live EEG signal. The confidence
+          slider is not connected to a trained classifier, and it does not change the number of
+          choices. HELP records the word and can speak it. It does not contact emergency services.
         </p>
       </PageHeader>
 
@@ -212,7 +215,7 @@ export function InterfacePage() {
 
       <div className="controls">
         <fieldset>
-          <legend>Reliability</legend>
+          <legend>Demonstration state</legend>
           <div className="seg">
             {RELIABILITY_LEVELS.map((level) => (
               <button
@@ -227,14 +230,14 @@ export function InterfacePage() {
           </div>
           <p className="note">
             {matched
-              ? `Matched to row ${matched.index}, variability rank ${matched.rank}. Rule ${RULE_ID}.`
-              : 'Set manually. Pressing a level clears a matched row.'}
+              ? `Matched to row ${matched.index}, variability rank ${matched.rank}. Rule ${RULE_ID} is a demonstration classification, not a validated reliability label.`
+              : 'Set manually. High, Medium, and Low are demonstration controls. Pressing a level clears a matched row.'}
           </p>
         </fieldset>
 
         <fieldset>
           <legend>Feature row</legend>
-          {data.status === 'loading' ? <p>Feature rows are loading. Manual reliability still works.</p> : null}
+          {data.status === 'loading' ? <p>Feature rows are loading. The manual demonstration controls still work.</p> : null}
           {data.status === 'error' ? <p role="alert">{data.message}</p> : null}
           {rows && (
             <>
@@ -269,7 +272,9 @@ export function InterfacePage() {
                 </p>
               ) : (
                 <p className="note">
-                  Matching applies rule {RULE_ID}. <Link to="/reliability">Read the rule</Link>.
+                  Match this row applies {RULE_ID}, a demonstration classification rule.{' '}
+                  <Link to="/reliability">Read the rule</Link>. It does not decide that the row is
+                  noisy or reliable.
                 </p>
               )}
             </>
@@ -290,7 +295,8 @@ export function InterfacePage() {
             aria-describedby="confidence-note"
           />
           <p id="confidence-note" className="note">
-            Not read from features.csv. Confirmation is required below {CONFIRM_BELOW}.
+            Not connected to a trained classifier, and not read from features.csv. The value is
+            chosen on this page. Confirmation is required below {CONFIRM_BELOW}.
           </p>
         </fieldset>
 
@@ -339,8 +345,9 @@ export function InterfacePage() {
 
       <Board choices={choices} onChoose={press} pending={pending} />
       <p className="note">
-        {choices.length} choices are on screen because reliability is {reliability}. Confidence does
-        not change this count.{' '}
+        {choices.length} choices are on screen because the variability-based demonstration state is{' '}
+        {reliability}. That state is a demonstration control or the tertile rule, not a validated
+        reliability score. Confidence does not change this count.{' '}
         {waiting
           ? `A choice waits for confirmation because confidence is ${confidence}, below ${CONFIRM_BELOW}.`
           : `A choice is sent immediately because confidence is ${confidence}, at or above ${CONFIRM_BELOW}.`}
@@ -396,7 +403,7 @@ export function InterfacePage() {
               <tr>
                 <th scope="col">Sent</th>
                 <th scope="col">Token</th>
-                <th scope="col">Reliability</th>
+                <th scope="col">Demonstration state</th>
                 <th scope="col">Choices</th>
                 <th scope="col">Confidence</th>
                 <th scope="col">Confirmation</th>

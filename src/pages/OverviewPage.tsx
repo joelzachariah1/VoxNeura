@@ -3,14 +3,14 @@ import { PageHeader } from '../components/PageHeader.tsx'
 import { usePageTitle } from '../components/usePageTitle.ts'
 import { useFeatures } from '../context/features-state.ts'
 import { RELIABILITY_LEVELS } from '../lib/reliability.ts'
-import { VOCAB, reliabilityLabel } from '../lib/vocabulary.ts'
+import { VOCAB, demonstrationStatePhrase } from '../lib/vocabulary.ts'
 
 const SECTIONS = [
   ['/data', 'Data', 'The feature table, descriptive statistics, and charts.'],
   ['/figures', 'Figures', 'The clean EEG, noisy EEG, and power spectrum images.'],
-  ['/reliability', 'Reliability', 'How signal reliability differs from classifier confidence.'],
-  ['/interface', 'Interface', 'The working board. High, medium, and low change the choices.'],
-  ['/experiments', 'Experiments', 'A labeled comparison of fixed and adaptive boards.'],
+  ['/reliability', 'Reliability', 'How a proposed reliability judgment differs from classifier confidence, and how the demonstration rule is computed.'],
+  ['/interface', 'Interface', 'The working board. Demonstration states change the choices.'],
+  ['/experiments', 'Experiments', 'A browser comparison of fixed and adaptive boards. Not an EEG study.'],
   ['/research', 'Research', 'What the files support, and what they do not.'],
 ] as const
 
@@ -26,16 +26,24 @@ export function OverviewPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Overview" title="Choices that shrink when the signal is less reliable">
+      <PageHeader eyebrow="Overview" title="A proposed board that shrinks when signal quality is low">
         <p>
-          VoxNeura is an adaptive communication interface. When EEG signal reliability is judged
-          to be high, the board offers more phrases.
-          When it is moderate, the board is shorter. When it is low, the board keeps YES, NO, HELP,
-          and RETRY.
+          VoxNeura is a proposed adaptive communication interface. In that proposal, a validated
+          measure of EEG signal quality would set the number of phrases. A high-quality signal
+          would offer more phrases. A moderate signal would shorten the board. A poor signal would
+          keep YES, NO, HELP, and RETRY.
+        </p>
+        <p>
+          This website does not make that measurement. The current implementation illustrates the
+          proposal with rule variability-tertiles-v1. The rule sorts the supplied feature rows by
+          the variability column and labels equal-count groups high, medium, and low. Those labels
+          are variability-based demonstration states. They are not validated measurements of EEG
+          reliability. The file has no artifact labels, signal-quality labels, or reliability scores.
         </p>
         <p>
           EEG measures voltage at the scalp. It does not contain words, and this application does
-          not read thoughts. A message leaves the board only when someone selects it.
+          not read thoughts. Nothing on this site processes a live EEG stream. A message leaves
+          the board only when someone selects it.
         </p>
       </PageHeader>
 
@@ -47,8 +55,11 @@ export function OverviewPage() {
             <p>Five numbers from the supplied table. The file does not label them as clean or noisy.</p>
           </li>
           <li>
-            <h3>Reliability state</h3>
-            <p>High, medium, or low. This decides how many choices are offered.</p>
+            <h3>Demonstration state</h3>
+            <p>
+              High, medium, or low. Here, the variability tertile rule assigns it. In the proposed
+              system, a validated signal-quality measure would assign it.
+            </p>
           </li>
           <li>
             <h3>Choice set</h3>
@@ -77,15 +88,15 @@ export function OverviewPage() {
           {RELIABILITY_LEVELS.map((level) => (
             <section key={level}>
               <h3>
-                {reliabilityLabel(level)} reliability, {VOCAB[level].length} choices
+                {demonstrationStatePhrase(level)}, {VOCAB[level].length} choices
               </h3>
               <p>{VOCAB[level].join(', ')}</p>
             </section>
           ))}
         </div>
         <p>
-          <Link to="/interface">Open the interface</Link> and switch High, Medium, and Low. The
-          board changes immediately.
+          <Link to="/interface">Open the interface</Link> and switch High, Medium, and Low. Those
+          are demonstration controls, and the board changes immediately. They do not read EEG.
         </p>
       </section>
 
@@ -100,8 +111,9 @@ export function OverviewPage() {
         </p>
         <p>
           Anything this application calculates is marked Computed here. Anything that is a
-          working example, including the reliability tertiles and the experiment log, is marked
-          Demonstration.
+          working example, including the variability-based demonstration states and the experiment
+          log, is marked Demonstration. The experiment log records browser selections. It is not
+          an EEG result.
         </p>
       </section>
 

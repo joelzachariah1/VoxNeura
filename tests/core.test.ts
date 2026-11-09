@@ -160,5 +160,7 @@ describe('trials and csv', () => {
     expect(summary.find((row) => row.key === 'Fixed')?.correct).toBe(1)
     expect(summary.find((row) => row.key === 'Adaptive')?.trials).toBe(0)
     expect(summary.find((row) => row.key === 'Held high, fixed')?.selections).toBe(1)
+    expect(summary.find((row) => row.key === 'Demonstration state: high')?.selections).toBe(1)
+    expect(summary.find((row) => row.key === 'Demonstration state: low')?.trials).toBe(0)
   })
 })

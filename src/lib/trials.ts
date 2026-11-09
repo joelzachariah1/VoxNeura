@@ -116,6 +116,14 @@ export function summaryRows(trials: TrialRecord[]): GroupSummary[] {
       )
     }
   }
+  for (const level of LEVELS) {
+    rows.push(
+      summarizeGroup(
+        trials.filter((trial) => trial.reliability === level),
+        `Demonstration state: ${level}`,
+      ),
+    )
+  }
   return rows
 }
 
@@ -130,8 +138,8 @@ export function trialsToCsv(trials: TrialRecord[]): string {
       'selection',
       'correct',
       'rt_ms',
-      'choice_count',
-      'reliability',
+      'visible_choices_at_selection',
+      'demonstration_state_at_selection',
       'ended_by',
       'data_source',
     ],

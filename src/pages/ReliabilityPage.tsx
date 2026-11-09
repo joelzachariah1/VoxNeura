@@ -26,10 +26,16 @@ export function ReliabilityPage() {
     <>
       <PageHeader eyebrow="Reliability" title="Two different judgments">
         <p>
-          Signal reliability asks whether the EEG segment is stable enough to support a
-          communication decision. Classifier confidence asks how strongly a classifier, if one
-          were used, would favor one label over the others. A confident output can still be wrong,
-          including on a poor signal.
+          In the proposed system, signal reliability would ask whether an EEG segment is stable
+          enough to support a communication decision. Classifier confidence would ask how strongly
+          a classifier favored one label. A confident output can still be wrong, including on a
+          poor signal. This page does not compute either quantity from a validated model.
+        </p>
+        <p>
+          The groups calculated below are variability-based demonstration states. Sorting by the
+          variability column and splitting into thirds has not been scientifically validated as a
+          measure of EEG reliability on the supplied data. A high-variability row is not evidence
+          of noise. A low-variability row is not evidence of a reliable signal.
         </p>
       </PageHeader>
 
@@ -37,26 +43,27 @@ export function ReliabilityPage() {
         <h2>What each one changes</h2>
         <div className="split">
           <section>
-            <h3>Signal reliability</h3>
-            <p>Changes the number of choices.</p>
+            <h3>Proposed signal reliability</h3>
+            <p>Would change the number of choices, if a validated quality measure were available.</p>
             <p>
-              High shows {VOCAB.high.length}. Medium shows {VOCAB.medium.length}. Low shows{' '}
-              {VOCAB.low.join(', ')}.
+              The demonstration uses the same three board sizes. High shows {VOCAB.high.length}.
+              Medium shows {VOCAB.medium.length}. Low shows {VOCAB.low.join(', ')}.
             </p>
           </section>
           <section>
             <h3>Classifier confidence</h3>
             <p>Does not change the number of choices.</p>
             <p>
-              In this demonstration it only decides whether a selected word is sent at once or
-              waits until it is confirmed. The cutoff is {CONFIRM_BELOW}. Below that, the word is
-              not sent until Send is pressed.
+              No classifier is connected to this site. The demonstration slider only decides whether
+              a selected word is sent at once or waits until it is confirmed. The cutoff is{' '}
+              {CONFIRM_BELOW}. Below that, the word is not sent until Send is pressed.
             </p>
           </section>
         </div>
         <p>
-          features.csv has neither a reliability label nor a classifier probability. The controls
-          below are marked as a demonstration so those two facts stay visible.
+          features.csv has neither a reliability label, an artifact label, nor a classifier
+          probability. The controls below apply the demonstration rule. They do not measure EEG
+          reliability.
         </p>
       </section>
 
@@ -64,6 +71,12 @@ export function ReliabilityPage() {
         <h2>
           <Mark kind="demonstration" /> Rule {RULE_ID}
         </h2>
+        <p>
+          The calculation is reproducible: the same rows and the same sort produce the same groups.
+          Reproducibility is not validation. The mapping between variability and reliability has
+          not been tested against artifact labels or signal-quality labels, because the supplied
+          file does not contain those labels.
+        </p>
         <p>{RULE_SUMMARY}</p>
         <FeaturesGate>
           {({ rows }) => <RuleDemo rows={rows} />}
@@ -73,10 +86,11 @@ export function ReliabilityPage() {
       <section className="block">
         <h2>Why variability is only a proxy</h2>
         <p>
-          The noisier screenshot is visually dominated by large, fast spikes. Amplitude variability
-          is the column in the table that is closest to that appearance. The mapping still has a
-          hole in it: a large value can be artifact, or it can be a large neural signal. The table
-          does not say which. Equal-count thirds also force three groups even when the values sit
+          The noisier screenshot is visually dominated by large, fast spikes. The variability
+          column is the number in the table that is closest to that appearance. That resemblance
+          is not a measurement. A large value can be artifact, or it can be a large neural signal,
+          or it can be something the file does not describe. A small value is not proof that the
+          segment is reliable. Equal-count thirds also force three groups even when the values sit
           close together. The boundaries are reported on this page so that closeness is visible.
         </p>
         <p>
@@ -112,7 +126,8 @@ function RuleDemo({ rows }: { rows: FeatureRow[] }) {
   return (
     <>
       <p>
-        This file produces {counts.high} high, {counts.medium} medium, and {counts.low} low rows.
+        This file produces {counts.high} high, {counts.medium} medium, and {counts.low} low
+        variability-based demonstration states.
         {edges.highMax !== null && edges.mediumMax !== null
           ? ` The highest variability in the high group is ${formatSci(edges.highMax)}, and in the medium group it is ${formatSci(edges.mediumMax)}.`
           : ''}
@@ -157,8 +172,9 @@ function RuleDemo({ rows }: { rows: FeatureRow[] }) {
             </dd>
           </dl>
           <p>
-            Demonstration state: {reliabilityLabel(state)}. The board would show {VOCAB[state].length}{' '}
-            choices: {VOCAB[state].join(', ')}.
+            Variability-based demonstration state: {reliabilityLabel(state)}. The board would show{' '}
+            {VOCAB[state].length} choices: {VOCAB[state].join(', ')}. This label is the tertile
+            rule, not a validated reliability score.
           </p>
           <p>
             <Link to={`/interface?row=${row.index}`}>Match row {row.index} on the interface</Link>
@@ -182,8 +198,9 @@ function RuleDemo({ rows }: { rows: FeatureRow[] }) {
               : `A selection would be sent immediately. The choice list stays at ${VOCAB[state].length}.`}
           </p>
           <p className="note">
-            Move this slider and the phrase list above does not change. Move the row, and the phrase
-            list can change. That is the distinction.
+            The slider is not a classifier output. Move it and the phrase list above does not
+            change. Move the row, and the phrase list can change, because the row applies the
+            variability tertile rule.
           </p>
         </fieldset>
       </div>
