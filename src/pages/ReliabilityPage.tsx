@@ -18,10 +18,12 @@ import {
   binCounts,
   binEdges,
 } from '../lib/reliability.ts'
+import { PLANNED_INDICATORS, assessSuppliedMaterials } from '../lib/signal-quality.ts'
 import { VOCAB, reliabilityLabel } from '../lib/vocabulary.ts'
 
 export function ReliabilityPage() {
   usePageTitle('Reliability')
+  const quality = assessSuppliedMaterials()
   return (
     <>
       <PageHeader eyebrow="Reliability" title="Two different judgments">
@@ -38,6 +40,26 @@ export function ReliabilityPage() {
           of noise. A low-variability row is not evidence of a reliable signal.
         </p>
       </PageHeader>
+
+      <section className="block" id="quality-assessment">
+        <h2>Quality assessment</h2>
+        <p>
+          Status: {quality.status}. Reason: {quality.reason}. Thresholds set: no. The indicators
+          below are the checks a later pipeline would compute from continuous samples. None of them
+          is computed from features.csv or from the screenshots. Variability is not one of them.
+        </p>
+        <ul>
+          {PLANNED_INDICATORS.map((item) => (
+            <li key={item.id}>{item.text}</li>
+          ))}
+        </ul>
+        <p>The supplied materials are missing:</p>
+        <ul>
+          {quality.missing.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
 
       <section className="block" id="distinction">
         <h2>What each one changes</h2>

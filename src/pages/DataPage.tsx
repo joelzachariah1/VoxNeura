@@ -67,7 +67,9 @@ export function DataPage() {
         <p>
           <Mark kind="recorded" /> The table below is the project file. Units, sampling rate,
           window length, and subject identifiers are not in it. Numbers are shown in scientific
-          notation, with no unit conversion.
+          notation, with no unit conversion. Columns in the file are supplied measurements.
+          Statistics, band shares, correlations, charts, and the demonstration-state column are
+          calculated by this application from those columns.
         </p>
       </PageHeader>
       <FeaturesGate>{(data) => <Explorer rows={data.rows} raw={data.raw} />}</FeaturesGate>

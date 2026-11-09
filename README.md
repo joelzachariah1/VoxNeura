@@ -68,11 +68,10 @@ Keys 1 through 9 select the first nine visible choices. Enter sends a waiting ch
 
 ## Experiments
 
-The experiments page records browser selections. It is not an EEG study.
+The experiments page records browser selections. It is not an EEG study. No significance test is reported.
 
-Each trial asks for one of YES, NO, HELP, or RETRY. Those four essential phrases stay available. The scenario and policy change how many additional phrases are visible. A recorded selection stores the number of visible choices and the demonstration state at that moment. Timeouts and stopped trials store neither, because no selection occurred.
+The target pool is either the full 16-phrase vocabulary or the four essential phrases. A paired sequence draws 8 targets once so both policies can use the same list. The draw is not seeded. The log stores the targets that were used, whether the target was on the board when the trial ended, the visible choice count, and the duration.
 
-- The target is one of YES, NO, HELP, or RETRY, each with equal chance. The draw is not seeded.
 - Held high keeps the demonstration state high. Both policies show 16 choices, so this scenario is a control.
 - Step down is high until 5 seconds, medium until 10 seconds, then low.
 - Held low stays low.
@@ -81,7 +80,9 @@ Each trial asks for one of YES, NO, HELP, or RETRY. Those four essential phrases
 - Uncheck "Record this trial" for a practice run. Practice is not written to the log.
 - "Repeat with the other policy" locks the same target for the next trial.
 
-Trials are stored in `localStorage` under `voxneura.trials.v1`. The CSV download adds a `data_source` column with the value `browser-demonstration`. Summary medians describe only those stored trials.
+Trials are stored in `localStorage` under `voxneura.trials.v1`. The CSV download adds a `data_source` column with the value `browser-demonstration`. Summary medians describe only those stored trials. Accuracy, timeout rate, error rate, and correct selections per minute are descriptive. Correct per minute is blank when a stored trial has no duration.
+
+Signal-quality assessment is not implemented. `src/lib/signal-quality.ts` reports that the supplied materials have no recording and that no threshold is set. It does not read `features.csv`. Dataset provenance is unknown.
 
 ## Calculations
 

@@ -3,6 +3,7 @@ import { PageHeader } from '../components/PageHeader.tsx'
 import { usePageTitle } from '../components/usePageTitle.ts'
 import { useFeatures } from '../context/features-state.ts'
 import { RELIABILITY_LEVELS } from '../lib/reliability.ts'
+import { PROPOSED_BOARD_SIZES, assessSuppliedMaterials } from '../lib/signal-quality.ts'
 import { VOCAB, demonstrationStatePhrase } from '../lib/vocabulary.ts'
 
 const SECTIONS = [
@@ -14,9 +15,18 @@ const SECTIONS = [
   ['/research', 'Research', 'What the files support, and what they do not.'],
 ] as const
 
+const PIPELINE = [
+  ['EEG acquisition', 'Not implemented. The project has no continuous recording.'],
+  ['Preprocessing', 'Not implemented. Sampling rate, reference, and filters were not supplied.'],
+  ['Quality assessment', 'Not implemented. No indicator is calculated, and no cutoff is set.'],
+  ['Communication board', 'Implemented as a demonstration. Manual levels or the variability tertile change the phrase count. That is not a quality score.'],
+  ['Selection and message', 'Implemented. A phrase is sent only after a person selects it. A separate confidence control can ask for confirmation.'],
+] as const
+
 export function OverviewPage() {
   usePageTitle('Overview')
   const data = useFeatures()
+  const quality = assessSuppliedMaterials()
   const fileLine =
     data.status === 'ready'
       ? `The supplied table has ${data.rows.length} rows and five columns: theta, alpha, beta, variability, and mean_amp.`
@@ -47,6 +57,34 @@ export function OverviewPage() {
         </p>
       </PageHeader>
 
+      <section className="block" aria-labelledby="prototype">
+        <h2 id="prototype">What This Prototype Does</h2>
+        <p>The current prototype combines three components:</p>
+        <ul>
+          <li>
+            EEG feature analysis. The data page analyzes the supplied features.csv file. The
+            columns are theta, alpha, beta, variability, and mean amplitude.
+          </li>
+          <li>
+            Interactive communication interface. A person can explore communication boards with{' '}
+            {VOCAB.high.length}, {VOCAB.medium.length}, or {VOCAB.low.length} choices.
+          </li>
+          <li>
+            Browser-based experiment. A person can compare a fixed board with an adaptive board.
+            The page records that person's selections and the calculated outcomes in this browser.
+          </li>
+        </ul>
+        <p>
+          The three demonstration states are assigned with a variability-based rule. They are not
+          validated EEG reliability measurements.
+        </p>
+        <p>
+          The current website does not process live EEG signals. It does not calculate validated
+          EEG signal reliability. It does not automatically adapt the board from a real-time EEG
+          signal.
+        </p>
+      </section>
+
       <section className="block" aria-labelledby="idea">
         <h2 id="idea">The idea, in one path</h2>
         <ol className="flow">
@@ -76,6 +114,26 @@ export function OverviewPage() {
           send a selection immediately, or wait for confirmation. <Link to="/reliability">Reliability</Link>{' '}
           shows the two controls moving independently.
         </p>
+      </section>
+
+      <section className="block" aria-labelledby="pipeline">
+        <h2 id="pipeline">Proposed path and what is implemented</h2>
+        <p>
+          The proposed path is acquisition, preprocessing, quality assessment, then a board of{' '}
+          {PROPOSED_BOARD_SIZES.good}, {PROPOSED_BOARD_SIZES.intermediate}, or{' '}
+          {PROPOSED_BOARD_SIZES.poor} phrases. Those sizes are the intended behavior. They are not
+          applied by a quality score. The assessment of the supplied materials is {quality.status},
+          reason {quality.reason}. {quality.missing.length} recording requirements are unmet, and no
+          threshold is set.
+        </p>
+        <ol className="flow">
+          {PIPELINE.map(([title, text]) => (
+            <li key={title}>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </li>
+          ))}
+        </ol>
       </section>
 
       <section className="block" aria-labelledby="states">

@@ -6,19 +6,23 @@ import { usePageTitle } from '../components/usePageTitle.ts'
 import { downloadCsv } from '../lib/download.ts'
 import { formatMs, stamp, uid } from '../lib/format.ts'
 import {
+  PAIRED_SEQUENCE_LENGTH,
   POLICIES,
   SCENARIO_IDS,
   STEP_TO_LOW_MS,
   STEP_TO_MEDIUM_MS,
   TRIAL_LIMIT_MS,
   choicesFor,
-  drawTarget,
+  drawSequence,
+  drawTargetFrom,
+  phrasesForPool,
   policyName,
   scenarioName,
   stateAt,
+  targetOnBoard,
 } from '../lib/protocol.ts'
-import type { Policy, ScenarioId } from '../lib/protocol.ts'
-import { loadTrials, saveTrials, summaryRows, trialsToCsv } from '../lib/trials.ts'
+import type { Policy, ScenarioId, TargetPool } from '../lib/protocol.ts'
+import { loadTrials, outcomeRows, saveTrials, summaryRows, trialsToCsv } from '../lib/trials.ts'
 import type { EndedBy, TrialRecord } from '../lib/trials.ts'
 import { VOCAB, demonstrationStatePhrase, reliabilityLabel } from '../lib/vocabulary.ts'
 
@@ -39,13 +43,26 @@ type Running = {
   scenario: ScenarioId
   policy: Policy
   target: string
+  targetPool: TargetPool
   record: boolean
+  pairId: string | null
+  sequenceIndex: number | null
+}
+
+type Pair = {
+  id: string
+  pool: TargetPool
+  scenario: ScenarioId
+  targets: string[]
+  index: number
 }
 
 export function ExperimentsPage() {
   usePageTitle('Experiments')
   const [scenario, setScenario] = useState<ScenarioId>('step-down')
   const [policy, setPolicy] = useState<Policy>('adaptive')
+  const [pool, setPool] = useState<TargetPool>('full')
+  const [pair, setPair] = useState<Pair | null>(null)
   const [record, setRecord] = useState(true)
   const [trials, setTrials] = useState<TrialRecord[]>(() => loadTrials())
   const [running, setRunning] = useState<Running | null>(null)
@@ -67,6 +84,7 @@ export function ExperimentsPage() {
   const outcomeRef = useRef<HTMLParagraphElement>(null)
   const targetRef = useRef<HTMLParagraphElement>(null)
   const trialsRef = useRef(trials)
+  const pairRef = useRef(pair)
 
   const activeScenario = running?.scenario ?? scenario
   const activePolicy = running?.policy ?? policy
@@ -78,10 +96,12 @@ export function ExperimentsPage() {
     if (finishedId.current === trial.id) return
     finishedId.current = trial.id
     const state = stateAt(trial.scenario, elapsedMs)
+    const visible = choicesFor(trial.policy, state)
     const selected = endedBy === 'selection'
-    const choiceCount = selected ? choicesFor(trial.policy, state).length : null
+    const choiceCount = selected ? visible.length : null
     const rtMs = selected ? Math.round(elapsedMs) : null
     const correct = selection === null ? null : selection === trial.target
+    const onBoard = targetOnBoard(trial.target, visible)
     const stored = trial.record
     setOutcome(outcomeText(trial, endedBy, selection, elapsedMs, stored))
     setLastRun({ target: trial.target, scenario: trial.scenario, policy: trial.policy })
@@ -102,12 +122,22 @@ export function ExperimentsPage() {
         choiceCount,
         reliability: selected ? state : null,
         endedBy,
+        durationMs: Math.round(elapsedMs),
+        targetPool: trial.targetPool,
+        targetOnBoard: onBoard,
+        visibleChoicesAtEnd: visible.length,
+        pairId: trial.pairId,
+        sequenceIndex: trial.sequenceIndex,
       } satisfies TrialRecord,
     ]
     trialsRef.current = next
     setTrials(next)
     if (!saveTrials(next)) {
       setStorageError('The trial is on screen, but this browser did not save it.')
+    }
+    const activePair = pairRef.current
+    if (activePair && trial.pairId === activePair.id && trial.sequenceIndex === activePair.index) {
+      setPair({ ...activePair, index: activePair.index + 1 })
     }
   }
 
@@ -116,6 +146,10 @@ export function ExperimentsPage() {
   useEffect(() => {
     trialsRef.current = trials
   }, [trials])
+
+  useEffect(() => {
+    pairRef.current = pair
+  }, [pair])
 
   useEffect(() => {
     finishRef.current = finish
@@ -176,7 +210,13 @@ export function ExperimentsPage() {
   }, [running])
 
   function start() {
-    const target = lockedTarget ?? drawTarget()
+    const activePair = pairRef.current
+    const fromPair =
+      lockedTarget === null && activePair && activePair.index < activePair.targets.length
+        ? activePair
+        : null
+    const target = lockedTarget ?? (fromPair ? fromPair.targets[fromPair.index] : drawTargetFrom(phrasesForPool(pool)))
+    if (!target) return
     setLockedTarget(null)
     setArmClear(false)
     setOutcome('')
@@ -185,11 +225,44 @@ export function ExperimentsPage() {
       id: uid(),
       t0: monotonicNow(),
       startedAt: new Date().toISOString(),
-      scenario,
+      scenario: fromPair ? fromPair.scenario : scenario,
       policy,
       target,
+      targetPool: fromPair ? fromPair.pool : pool,
       record,
+      pairId: fromPair ? fromPair.id : null,
+      sequenceIndex: fromPair ? fromPair.index : null,
     })
+  }
+
+  function preparePair() {
+    const targets = drawSequence(phrasesForPool(pool), PAIRED_SEQUENCE_LENGTH)
+    setPair({ id: uid(), pool, scenario, targets, index: 0 })
+    setLockedTarget(null)
+    setOutcome(`Prepared ${targets.length} targets. Both policies can use this same list.`)
+  }
+
+  function switchPairPolicy() {
+    if (!pair) return
+    setPolicy(policy === 'fixed' ? 'adaptive' : 'fixed')
+    setPair({ ...pair, index: 0 })
+    setOutcome('The same targets will start again at the first phrase, with the other policy.')
+  }
+
+  function chooseScenario(id: ScenarioId) {
+    setScenario(id)
+    if (pair) {
+      setPair(null)
+      setOutcome('The paired sequence was cleared because the scenario changed.')
+    }
+  }
+
+  function choosePool(next: TargetPool) {
+    setPool(next)
+    if (pair) {
+      setPair(null)
+      setOutcome('The paired sequence was cleared because the target pool changed.')
+    }
   }
 
   function stop() {
@@ -198,6 +271,7 @@ export function ExperimentsPage() {
   }
 
   const summaries = summaryRows(trials)
+  const outcomes = outcomeRows(trials)
   const fixed = summaries.find((row) => row.key === 'Fixed')
   const adaptive = summaries.find((row) => row.key === 'Adaptive')
 
@@ -205,12 +279,13 @@ export function ExperimentsPage() {
     <>
       <PageHeader eyebrow="Experiments" title="Fixed board against adaptive board">
         <p>
-          <Mark kind="demonstration" /> This page records selections made in this browser. It does
-          not record EEG, and it is not a result from a participant study. Each trial asks for one
-          of the four essential phrases, YES, NO, HELP, or RETRY. Those four stay available in
-          every demonstration state. The scenario and policy change how many additional phrases
-          are visible. The recorded state is the variability-based demonstration state at the
-          moment of selection. It is not an EEG reliability measurement.
+          <Mark kind="demonstration" /> This experiment evaluates browser-based board selection. It
+          records selections made in this browser. It does not measure actual EEG performance, and
+          it does not measure clinical communication outcomes. It does not record EEG, and it is
+          not a participant study. A target can be any phrase in the
+          selected pool. The full pool includes phrases that leave the board when the adaptive
+          policy is medium or low. The essential-only pool keeps the earlier task, where YES, NO,
+          HELP, and RETRY are always available. The scenario clock is not an EEG quality measurement.
         </p>
       </PageHeader>
 
@@ -218,12 +293,14 @@ export function ExperimentsPage() {
         <h2>Protocol</h2>
         <p>
           A trial ends at the first selection, at 30 seconds with no selection, or when Stop trial
-          is pressed. The target is always one of the four essential phrases. Other phrases, when
-          they are on screen, are additional visible choices. Held high is a control: both policies
-          show the same {VOCAB.high.length} choices, so a time difference there is not explained by
-          the size of the board. Step down changes the demonstration state at {STEP_TO_MEDIUM_MS / 1000}{' '}
-          seconds and again at {STEP_TO_LOW_MS / 1000} seconds. Held low stays low. None of these
-          clocks is computed from EEG.
+          is pressed. Held high is a control: both policies show the same {VOCAB.high.length}{' '}
+          choices, so a time difference there is not explained by the size of the board. Step down
+          changes the demonstration state at {STEP_TO_MEDIUM_MS / 1000} seconds and again at{' '}
+          {STEP_TO_LOW_MS / 1000} seconds. Held low stays low. None of these clocks is computed from
+          EEG. A paired sequence draws {PAIRED_SEQUENCE_LENGTH} targets once. The same list can be
+          run under each policy. The draw is not seeded. The stored log contains the targets that
+          were actually used. One person completing both orders still has practice effects, so the
+          log does not support a claim that one policy is better.
         </p>
         <p>
           Fixed always shows {VOCAB.high.length} choices. Adaptive shows {VOCAB.high.length} at
@@ -259,8 +336,11 @@ export function ExperimentsPage() {
           </table>
         </div>
         <p className="note">
-          The target is drawn with equal chance from the four essential words. The draw is not
-          seeded. Repeat with the other policy keeps the same word for the next trial.
+          No significance test is reported. Accuracy is correct selections divided by selections.
+          Timeout rate is timeouts divided by trials. Error rate is incorrect selections divided by
+          selections. Correct per minute uses the stored duration of every trial in the group, and
+          it is blank when an older trial has no duration. Targets hidden counts trials whose
+          target was absent from the board when the trial ended.
         </p>
       </section>
 
@@ -277,7 +357,7 @@ export function ExperimentsPage() {
                     type="radio"
                     name="scenario"
                     checked={scenario === id}
-                    onChange={() => setScenario(id)}
+                    onChange={() => chooseScenario(id)}
                   />
                   {scenarioName(id)}
                 </label>
@@ -297,6 +377,27 @@ export function ExperimentsPage() {
                 </label>
               ))}
             </fieldset>
+            <fieldset>
+              <legend>Target pool</legend>
+              <label className="check">
+                <input
+                  type="radio"
+                  name="pool"
+                  checked={pool === 'full'}
+                  onChange={() => choosePool('full')}
+                />
+                Full vocabulary, {VOCAB.high.length} phrases
+              </label>
+              <label className="check">
+                <input
+                  type="radio"
+                  name="pool"
+                  checked={pool === 'essential'}
+                  onChange={() => choosePool('essential')}
+                />
+                Essential four only
+              </label>
+            </fieldset>
           </div>
           <label className="check">
             <input
@@ -311,6 +412,14 @@ export function ExperimentsPage() {
               ? 'The result will be stored in this browser.'
               : 'Practice uses the same timer and board. The result stays on screen and is not written to the log.'}
           </p>
+          {pair ? (
+            <p>
+              {pair.index >= pair.targets.length
+                ? `Paired sequence complete, ${pair.targets.length} of ${pair.targets.length}.`
+                : `Paired sequence ${pair.index + 1} of ${pair.targets.length}.`}{' '}
+              Targets: {pair.targets.join(', ')}.
+            </p>
+          ) : null}
           {!running &&
             (lockedTarget ? (
               <p>
@@ -347,6 +456,12 @@ export function ExperimentsPage() {
           >
             Repeat with the other policy
           </button>
+          <button type="button" disabled={running !== null} onClick={preparePair}>
+            Prepare {PAIRED_SEQUENCE_LENGTH} shared targets
+          </button>
+          <button type="button" disabled={!pair || running !== null} onClick={switchPairPolicy}>
+            Restart the shared targets with the other policy
+          </button>
         </div>
 
         <p className="outcome" role="status" tabIndex={-1} ref={outcomeRef}>
@@ -360,6 +475,9 @@ export function ExperimentsPage() {
             <p className="utterance" tabIndex={-1} ref={targetRef}>
               Select {running.target}
             </p>
+            {targetOnBoard(running.target, choices) ? null : (
+              <p>{running.target} is not on the board in this demonstration state.</p>
+            )}
             <p>
               {formatMs(clock)} elapsed. {demonstrationStatePhrase(reliability)}. {choices.length}{' '}
               choices. {policyName(running.policy)} policy. {scenarioName(running.scenario)}.
@@ -392,6 +510,7 @@ export function ExperimentsPage() {
                 saveTrials([])
                 setLastRun(null)
                 setLockedTarget(null)
+                setPair(null)
                 setArmClear(false)
                 setOutcome('The log was cleared from this browser.')
               }}
@@ -455,6 +574,40 @@ export function ExperimentsPage() {
         </div>
         <div className="table-wrap">
           <table className="numeric">
+            <caption>
+              Descriptive outcome measures for the same groups. Blank rates mean the denominator
+              was zero, or an older trial did not store duration. No p-value is calculated.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Group</th>
+                <th scope="col">Accuracy</th>
+                <th scope="col">Median</th>
+                <th scope="col">Mean</th>
+                <th scope="col">Timeout rate</th>
+                <th scope="col">Error rate</th>
+                <th scope="col">Correct per minute</th>
+                <th scope="col">Targets hidden</th>
+              </tr>
+            </thead>
+            <tbody>
+              {outcomes.map((row) => (
+                <tr key={row.key}>
+                  <th scope="row">{row.key}</th>
+                  <td>{formatRate(row.accuracy)}</td>
+                  <td>{formatMs(row.medianRtMs)}</td>
+                  <td>{formatMs(row.meanRtMs)}</td>
+                  <td>{formatRate(row.timeoutRate)}</td>
+                  <td>{formatRate(row.errorRate)}</td>
+                  <td>{row.correctPerMinute === null ? '' : row.correctPerMinute.toFixed(2)}</td>
+                  <td>{row.targetsHidden ?? ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="table-wrap">
+          <table className="numeric">
             <caption>Newest recorded trial first. The CSV is oldest first.</caption>
             <thead>
               <tr>
@@ -467,13 +620,16 @@ export function ExperimentsPage() {
                 <th scope="col">Time</th>
                 <th scope="col">Visible choices at selection</th>
                 <th scope="col">State at selection</th>
+                <th scope="col">On board</th>
+                <th scope="col">Pool</th>
+                <th scope="col">Pair index</th>
                 <th scope="col">Ended</th>
               </tr>
             </thead>
             <tbody>
               {trials.length === 0 ? (
                 <tr>
-                  <td colSpan={10}>No recorded trials.</td>
+                  <td colSpan={13}>No recorded trials.</td>
                 </tr>
               ) : (
                 [...trials].reverse().map((trial) => (
@@ -487,6 +643,9 @@ export function ExperimentsPage() {
                     <td>{formatMs(trial.rtMs)}</td>
                     <td>{trial.choiceCount ?? ''}</td>
                     <td>{trial.reliability ?? ''}</td>
+                    <td>{trial.targetOnBoard === null || trial.targetOnBoard === undefined ? '' : trial.targetOnBoard ? 'yes' : 'no'}</td>
+                    <td>{trial.targetPool ?? ''}</td>
+                    <td>{trial.sequenceIndex === null || trial.sequenceIndex === undefined ? '' : trial.sequenceIndex + 1}</td>
                     <td>{trial.endedBy}</td>
                   </tr>
                 ))
@@ -497,6 +656,11 @@ export function ExperimentsPage() {
       </section>
     </>
   )
+}
+
+function formatRate(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return ''
+  return `${(value * 100).toFixed(1)}%`
 }
 
 function outcomeText(
@@ -531,5 +695,5 @@ function comparisonSentence(
   if (parts.length === 0) {
     return 'No selections have been stored yet. Medians appear after a recorded trial ends with a choice.'
   }
-  return `These numbers describe browser selections stored on this computer. Each selection is one of four essential phrases. ${parts.join(' ')} They are not an EEG result and not a participant study.`
+  return `These numbers describe browser selections stored on this computer. ${parts.join(' ')} They are not an EEG result, not a participant study, and not a significance test.`
 }

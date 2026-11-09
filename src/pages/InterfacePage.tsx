@@ -18,6 +18,7 @@ import {
   transcriptToCsv,
 } from '../lib/transcript.ts'
 import type { LogEntry } from '../lib/transcript.ts'
+import { assessSuppliedMaterials } from '../lib/signal-quality.ts'
 import { VOCAB, reliabilityLabel } from '../lib/vocabulary.ts'
 
 export function InterfacePage() {
@@ -196,7 +197,11 @@ export function InterfacePage() {
           <Mark kind="demonstration" /> High, Medium, and Low are demonstration controls. They
           change the choices immediately. They do not read a live EEG signal. The confidence
           slider is not connected to a trained classifier, and it does not change the number of
-          choices. HELP records the word and can speak it. It does not contact emergency services.
+          choices. HELP records the word and can speak it. It does not contact           emergency services.
+        </p>
+        <p>
+          EEG quality assessment is {assessSuppliedMaterials().status}. This board is not being
+          driven by a quality score. High, Medium, and Low remain demonstration controls.
         </p>
       </PageHeader>
 

@@ -3,10 +3,11 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { toCsv } from '../src/lib/download.ts'
 import { bandShares, correlationMatrix, parseFeatures } from '../src/lib/features.ts'
-import { choicesFor, needsConfirmation, stateAt } from '../src/lib/protocol.ts'
+import { choicesFor, drawSequence, needsConfirmation, stateAt, targetOnBoard } from '../src/lib/protocol.ts'
+import { appliedBoardSize, assessRecording, assessSuppliedMaterials } from '../src/lib/signal-quality.ts'
 import { assignByVariability, binCounts, binEdges } from '../src/lib/reliability.ts'
 import { columnStat, histogram, mean, pearson, quantile, sampleSd } from '../src/lib/stats.ts'
-import { summarizeGroup, summaryRows } from '../src/lib/trials.ts'
+import { outcomeRows, summarizeGroup, summaryRows } from '../src/lib/trials.ts'
 import type { TrialRecord } from '../src/lib/trials.ts'
 import { VOCAB } from '../src/lib/vocabulary.ts'
 
@@ -162,5 +163,37 @@ describe('trials and csv', () => {
     expect(summary.find((row) => row.key === 'Held high, fixed')?.selections).toBe(1)
     expect(summary.find((row) => row.key === 'Demonstration state: high')?.selections).toBe(1)
     expect(summary.find((row) => row.key === 'Demonstration state: low')?.trials).toBe(0)
+    const outcomes = outcomeRows([trial])
+    expect(outcomes.find((row) => row.key === 'Fixed')?.accuracy).toBe(1)
+    expect(outcomes.find((row) => row.key === 'Fixed')?.correctPerMinute).toBeNull()
+  })
+
+  it('keeps a shared target list and notices a hidden full-vocabulary target', () => {
+    const sequence = drawSequence(['YES', 'WATER'], 4, () => 0.99)
+    expect(sequence).toEqual(['WATER', 'WATER', 'WATER', 'WATER'])
+    const replay = drawSequence(['YES', 'WATER'], 4, () => 0.99)
+    expect(replay).toEqual(sequence)
+    expect(targetOnBoard('HUNGRY', choicesFor('adaptive', 'low'))).toBe(false)
+    expect(targetOnBoard('YES', choicesFor('adaptive', 'low'))).toBe(true)
+  })
+
+  it('does not score the supplied materials or invent a threshold', () => {
+    const supplied = assessSuppliedMaterials()
+    expect(supplied.status).toBe('unavailable')
+    expect(supplied.reason).toBe('no-recording')
+    expect(supplied.thresholdsSet).toBe(false)
+    expect(appliedBoardSize(supplied)).toBeNull()
+    const complete = assessRecording({
+      samplingRateHz: 256,
+      channelNames: ['Fz'],
+      unit: 'uV',
+      reference: 'average',
+      filters: 'none recorded',
+      samples: [[0, 1, -1]],
+    })
+    expect(complete.status).toBe('unavailable')
+    expect(complete.reason).toBe('no-thresholds')
+    expect(complete.thresholdsSet).toBe(false)
+    expect(appliedBoardSize(complete)).toBeNull()
   })
 })

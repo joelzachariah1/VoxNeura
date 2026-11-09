@@ -54,7 +54,8 @@ export function FiguresPage() {
         <p>
           <Mark kind="recorded" /> These are the original screenshots. Nothing has been redrawn,
           filtered, or traced. Captions describe what is visible in the image and do not add a
-          recording protocol.
+          recording protocol. The prototype displays these images. It does not process them as a
+          live EEG signal, and it does not use them to adapt the communication board.
         </p>
       </PageHeader>
 

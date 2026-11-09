@@ -59,6 +59,34 @@ export function ResearchPage() {
         </p>
       </PageHeader>
 
+      <section className="block" id="current-and-proposed">
+        <h2>Current Implementation and Proposed System</h2>
+        <p>
+          The proposed workflow is EEG acquisition, then signal-quality assessment, then an
+          adaptive communication board, then a user selection, then message output.
+        </p>
+        <h3>Implemented in this prototype</h3>
+        <ul>
+          <li>EEG feature data analysis and visualization from the supplied features.csv file.</li>
+          <li>Variability-based demonstration states. These states are a sorting rule, not a validated reliability measurement.</li>
+          <li>An interactive communication board with 16, 8, or 4 choices.</li>
+          <li>A browser-based comparison of a fixed board and an adaptive board, with stored selections and descriptive outcomes.</li>
+        </ul>
+        <h3>Not yet implemented</h3>
+        <ul>
+          <li>Live EEG acquisition and processing.</li>
+          <li>Validated EEG signal-quality assessment.</li>
+          <li>EEG-driven automatic board adaptation.</li>
+          <li>Integration with a trained EEG classifier.</li>
+          <li>Evaluation with actual EEG users or participants.</li>
+        </ul>
+        <p>
+          Advancing the proposed system requires documented EEG recordings, a defensible
+          signal-quality assessment method, integration of that method with the interface, and
+          appropriately designed participant studies.
+        </p>
+      </section>
+
       <section className="block">
         <h2>
           <Mark kind="recorded" /> Materials
@@ -109,8 +137,34 @@ export function ResearchPage() {
           The groups it produces are variability-based demonstration states. They illustrate a
           proposed adaptive mechanism. They are not validated EEG reliability measurements.
           The experiment log is created when someone uses the <Link to="/experiments">experiments page</Link>.
-          Those trials are browser selections among four essential phrases. They are not an EEG study.
+          Those trials are browser selections. The target pool can be the full vocabulary or the
+          four essential phrases. They are not an EEG study, and the page does not report a
+          significance test.
         </p>
+      </section>
+
+      <section className="block" id="reproducibility">
+        <h2>Reproducibility</h2>
+        <ul>
+          <li>Dataset source: unknown. No license, recording site, or data-use statement was supplied.</li>
+          <li>Recording metadata: not supplied. Sampling rate, duration, montage, reference, and filters are absent.</li>
+          <li>Preprocessing and feature extraction: not supplied. The five CSV columns are used as stored.</li>
+          <li>Signal-quality calculation: not run. src/lib/signal-quality.ts returns unavailable and does not read the CSV.</li>
+          <li>Thresholds: none are set, so the board sizes 16, 8, and 4 are not applied from a quality score.</li>
+          <li>Classifier: none is included. The confidence slider is a page control.</li>
+          <li>Browser experiment: unseeded draws. A paired sequence stores the realized targets in the trial log. The log is browser-demonstration data in localStorage key voxneura.trials.v1.</li>
+          <li>Software: React, Vite, and TypeScript, with versions in package.json. npm test runs the parser, the tertile split, the quality gate, and the trial summaries.</li>
+        </ul>
+      </section>
+
+      <section className="block" id="future">
+        <h2>What is required next</h2>
+        <ol>
+          <li>Add a continuous multichannel recording with sampling rate, channel names, units, reference, and filters.</li>
+          <li>Define each quality indicator in those units, then set cutoffs from an independent labeled set or a published standard.</li>
+          <li>Only after that cutoff exists, connect it to the 16, 8, and 4 phrase boards and keep classifier confidence separate.</li>
+          <li>A comparison of fixed and adaptive boards with participants needs review with the project mentor and the appropriate research oversight before recruitment.</li>
+        </ol>
       </section>
 
       <section className="block" id="limitations">
@@ -123,6 +177,8 @@ export function ResearchPage() {
           <li>Figure 1 and Figure 2 use different microvolt scales, so their amplitudes should not be compared by eye.</li>
           <li>The variability tertiles are equal-count bins. They can split a narrow range into three labels. That split has not been validated as EEG reliability.</li>
           <li>High variability is not labeled as artifact anywhere in the file, and low variability is not labeled as a reliable signal.</li>
+          <li>No EEG quality score is calculated, and no cutoff assigns the 16, 8, or 4 phrase boards.</li>
+          <li>The browser experiment can hide a full-vocabulary target on the shorter adaptive boards. Its results are descriptive. One operator and an unseeded draw do not establish that adaptation improves communication.</li>
           <li>The confidence slider is not the output of a trained classifier.</li>
           <li>Speech depends on the browser. HELP does not contact anyone. No patient communication was recorded.</li>
           <li>The references below are background reading. They were not in the supplied project files, and they are not evidence that this demonstration works.</li>

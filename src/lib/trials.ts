@@ -1,5 +1,5 @@
 import { mean, median } from './stats.ts'
-import type { Policy, ScenarioId } from './protocol.ts'
+import type { Policy, ScenarioId, TargetPool } from './protocol.ts'
 import { policyName, scenarioName } from './protocol.ts'
 import type { Reliability } from './reliability.ts'
 import { toCsv } from './download.ts'
@@ -18,6 +18,12 @@ export type TrialRecord = {
   choiceCount: number | null
   reliability: Reliability | null
   endedBy: EndedBy
+  durationMs?: number | null
+  targetPool?: TargetPool | null
+  targetOnBoard?: boolean | null
+  visibleChoicesAtEnd?: number | null
+  pairId?: string | null
+  sequenceIndex?: number | null
 }
 
 export type GroupSummary = {
@@ -56,8 +62,31 @@ function isTrial(value: unknown): value is TrialRecord {
     (trial.reliability === null ||
       (typeof trial.reliability === 'string' && LEVELS.includes(trial.reliability as Reliability))) &&
     typeof trial.endedBy === 'string' &&
-    ENDINGS.includes(trial.endedBy as EndedBy)
+    ENDINGS.includes(trial.endedBy as EndedBy) &&
+    (trial.durationMs === undefined || trial.durationMs === null || typeof trial.durationMs === 'number') &&
+    (trial.targetPool === undefined ||
+      trial.targetPool === null ||
+      trial.targetPool === 'essential' ||
+      trial.targetPool === 'full') &&
+    (trial.targetOnBoard === undefined || trial.targetOnBoard === null || typeof trial.targetOnBoard === 'boolean') &&
+    (trial.visibleChoicesAtEnd === undefined ||
+      trial.visibleChoicesAtEnd === null ||
+      typeof trial.visibleChoicesAtEnd === 'number') &&
+    (trial.pairId === undefined || trial.pairId === null || typeof trial.pairId === 'string') &&
+    (trial.sequenceIndex === undefined || trial.sequenceIndex === null || typeof trial.sequenceIndex === 'number')
   )
+}
+
+function withDefaults(trial: TrialRecord): TrialRecord {
+  return {
+    ...trial,
+    durationMs: typeof trial.durationMs === 'number' ? trial.durationMs : null,
+    targetPool: trial.targetPool === 'essential' || trial.targetPool === 'full' ? trial.targetPool : null,
+    targetOnBoard: typeof trial.targetOnBoard === 'boolean' ? trial.targetOnBoard : null,
+    visibleChoicesAtEnd: typeof trial.visibleChoicesAtEnd === 'number' ? trial.visibleChoicesAtEnd : null,
+    pairId: typeof trial.pairId === 'string' ? trial.pairId : null,
+    sequenceIndex: typeof trial.sequenceIndex === 'number' ? trial.sequenceIndex : null,
+  }
 }
 
 export function loadTrials(): TrialRecord[] {
@@ -69,7 +98,7 @@ export function loadTrials(): TrialRecord[] {
     if (!parsed || typeof parsed !== 'object' || !('trials' in parsed)) return []
     const trials = (parsed as { trials: unknown }).trials
     if (!Array.isArray(trials)) return []
-    return trials.filter(isTrial)
+    return trials.filter(isTrial).map(withDefaults)
   } catch {
     return []
   }
@@ -101,30 +130,66 @@ export function summarizeGroup(trials: TrialRecord[], key: string): GroupSummary
   }
 }
 
-export function summaryRows(trials: TrialRecord[]): GroupSummary[] {
-  const rows: GroupSummary[] = [summarizeGroup(trials, 'All recorded trials')]
+export type OutcomeMeasures = {
+  key: string
+  trials: number
+  accuracy: number | null
+  medianRtMs: number | null
+  meanRtMs: number | null
+  timeoutRate: number | null
+  errorRate: number | null
+  correctPerMinute: number | null
+  targetsHidden: number | null
+}
+
+function grouped(trials: TrialRecord[]): { key: string; trials: TrialRecord[] }[] {
+  const rows: { key: string; trials: TrialRecord[] }[] = [{ key: 'All recorded trials', trials }]
   for (const policy of POLICIES) {
-    rows.push(summarizeGroup(trials.filter((trial) => trial.policy === policy), policyName(policy)))
+    rows.push({ key: policyName(policy), trials: trials.filter((trial) => trial.policy === policy) })
   }
   for (const scenario of SCENARIOS) {
     for (const policy of POLICIES) {
-      rows.push(
-        summarizeGroup(
-          trials.filter((trial) => trial.scenario === scenario && trial.policy === policy),
-          `${scenarioName(scenario)}, ${policyName(policy).toLowerCase()}`,
-        ),
-      )
+      rows.push({
+        key: `${scenarioName(scenario)}, ${policyName(policy).toLowerCase()}`,
+        trials: trials.filter((trial) => trial.scenario === scenario && trial.policy === policy),
+      })
     }
   }
   for (const level of LEVELS) {
-    rows.push(
-      summarizeGroup(
-        trials.filter((trial) => trial.reliability === level),
-        `Demonstration state: ${level}`,
-      ),
-    )
+    rows.push({
+      key: `Demonstration state: ${level}`,
+      trials: trials.filter((trial) => trial.reliability === level),
+    })
   }
   return rows
+}
+
+function outcomeFor(trials: TrialRecord[], key: string): OutcomeMeasures {
+  const summary = summarizeGroup(trials, key)
+  const durations = trials.map((trial) => trial.durationMs)
+  const durationKnown = trials.length > 0 && durations.every((value) => typeof value === 'number')
+  const totalMs = durationKnown ? durations.reduce<number>((sum, value) => sum + (value as number), 0) : 0
+  const knownBoard = trials.filter((trial) => typeof trial.targetOnBoard === 'boolean')
+  return {
+    key,
+    trials: summary.trials,
+    accuracy: summary.selections > 0 ? summary.correct / summary.selections : null,
+    medianRtMs: summary.medianRtMs,
+    meanRtMs: summary.meanRtMs,
+    timeoutRate: summary.trials > 0 ? summary.timeouts / summary.trials : null,
+    errorRate: summary.selections > 0 ? summary.incorrect / summary.selections : null,
+    correctPerMinute: durationKnown && totalMs > 0 ? summary.correct / (totalMs / 60000) : null,
+    targetsHidden:
+      knownBoard.length === 0 ? null : knownBoard.filter((trial) => trial.targetOnBoard === false).length,
+  }
+}
+
+export function summaryRows(trials: TrialRecord[]): GroupSummary[] {
+  return grouped(trials).map((group) => summarizeGroup(group.trials, group.key))
+}
+
+export function outcomeRows(trials: TrialRecord[]): OutcomeMeasures[] {
+  return grouped(trials).map((group) => outcomeFor(group.trials, group.key))
 }
 
 export function trialsToCsv(trials: TrialRecord[]): string {
@@ -139,7 +204,13 @@ export function trialsToCsv(trials: TrialRecord[]): string {
       'correct',
       'rt_ms',
       'visible_choices_at_selection',
+      'visible_choices_at_end',
       'demonstration_state_at_selection',
+      'target_on_board',
+      'duration_ms',
+      'target_pool',
+      'pair_id',
+      'sequence_index',
       'ended_by',
       'data_source',
     ],
@@ -153,7 +224,13 @@ export function trialsToCsv(trials: TrialRecord[]): string {
       trial.correct === null ? '' : trial.correct ? 'true' : 'false',
       trial.rtMs,
       trial.choiceCount,
+      trial.visibleChoicesAtEnd ?? null,
       trial.reliability,
+      trial.targetOnBoard === null || trial.targetOnBoard === undefined ? '' : trial.targetOnBoard ? 'true' : 'false',
+      trial.durationMs ?? null,
+      trial.targetPool ?? null,
+      trial.pairId ?? null,
+      trial.sequenceIndex ?? null,
       trial.endedBy,
       'browser-demonstration',
     ]),
